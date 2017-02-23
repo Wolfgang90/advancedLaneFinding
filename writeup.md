@@ -14,11 +14,11 @@ The goals / steps of this project are the following:
 [//]: # (Image References)
 
 [image1]: ./output_images/01_chess_dist.png "distorted chessboard"
-[image2]: ./output_images/02_chess_dist "undistorted chessboard"
+[image2]: ./output_images/02_chess_dist.png "undistorted chessboard"
 [image3]: ./output_images/03_original.png "original status example picture"
 [image4]: ./output_images/04_undistorted.png "undistorted image"
 [image12]: ./output_images/12_combined_binary.png "combined binary image"
-[image13]: ./output_images/13_src_points "source points"
+[image13]: ./output_images/13_src_points.png "source points"
 [image14]: ./output_images/14_dst_points.png "destination points"
 [image15]: ./output_images/13_warped.png "warped image"
 [image16]: ./output_images/14_warped_binary.png "warped binary image"
@@ -94,9 +94,11 @@ dst = np.float32(
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
 Test image:
+
 ![alt text][image13]
 
 Warped image:
+
 ![alt text][image14]
 
 If I apply the warp function on our test image, it looks like this:
@@ -138,6 +140,12 @@ In section "2.6 Transform lane view back to initial image" I implemented the fun
 
 ####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
+In section "3.1 Define class to store previous image values" I designed the class `Line()` to hold the line values of the previous images (up to 5) in instances for the right and left line, to be able to access the values of the previous image to set thresholds if the identified values deviate too strongly from the previous image. Furthermore, the instances will be used to calculate an average of the past 5 values if a lane line was not identified to output in the video.
+
+In section "3.2 Define function to apply processing pipeline on image" I created the full pipeline to be applied on a single image of the video stream in the function `process_image()`. The pipeline consists of the functions defined in section "2 Pipeline (test images)" (line 14 ff. in respective code field). Subsequently, I defined three conditions which result in lines not beeing detected, which are: (1) width of the lane lines is greater than 6 or smaller than 2 meters, (2) lane lines are pointing in different directions and one of the curve radiuses is smaller 1000m, (3) Strong differences in curve radius (> 100m) at small turns (< 1000m for both curve radius) (line 33 ff. in respective code field). If the lane line was identified, the class values are updated accordingly (line 52 ff. in respective code field). Else, the class value for detected lane lines is set to not detected (line 57 ff. in respective code field) and the lane values are updated with the mentioned average values of the previous 5 correctly fitted images (line 62 ff. in respective code field).
+
+In section "3.3 Process video" the class instances for right and left lines are created (2nd code cell of section) and the pipeline of section "3.2 Define function to apply processing pipeline on image" is applied on the video.
+
 Here's a [link to my video result](./project_video.mp4)
 
 ---
@@ -146,5 +154,16 @@ Here's a [link to my video result](./project_video.mp4)
 
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+The strongest challeng I faced during implementation was, that lines were "getting out of control", meaning, that they suddently moved away from the actual line to something nearby which might look like a line in the thresholded images. To tackle this issue. I introduced the three conditions to eliminate the lane detections which do not seem reasonable and replace them with average values from the previous images as elaborated in the "Pipeline (video)" paragraph before. Also starting off with the much more detailed lane finding approach with the function `identify_lane_line_first()` helps to identify the lanes better in the next image.
 
+My pipeline still struggles in situations were:
+
+1) The road color and the color of the lanes do not have much contrast, e.g. yellow lanes and concrete road
+
+2) There is both shadow and light on the road, with strong contrast, which might be interpreted as lane by the current pipeline
+
+3) Reflections resulting from either water on the road or reflections in the car window, which might be interpreted as lane lines by the image
+
+4) In foggy conditions, when there is not much contrast between the lane lines and the rest of the image
+
+To address these challenges, it would help to further experiment with the creation of the binary image. Other colorspaces and flexibel thresholding (e.g. based on overall image brightness) to receive a better binary image result in the just mentioned scenarios, which is key for the subsequent lane detection.
